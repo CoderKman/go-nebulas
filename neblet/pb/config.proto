@@ -58,6 +58,16 @@ message ChainConfig {
     // Key dir.
     string keydir = 12;
 
+	// storage type mysql leveldb memory
+    string storage = 13;
+
+	// mysql DSN (Data Source Name)
+	// [username[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN]
+    string mysql_dsn = 18;
+
+	// mysql table 
+    string mysql_table  = 19;
+
     // start mine at launch
     bool start_mine = 20;
 

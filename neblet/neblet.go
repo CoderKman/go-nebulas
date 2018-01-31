@@ -100,13 +100,25 @@ func (n *Neblet) Setup() {
 	logging.CLog().Info("Setuping Neblet...")
 
 	// storage
-	// n.storage, err = storage.NewMemoryStorage()
-	n.storage, err = storage.NewDiskStorage(n.config.Chain.Datadir)
+	if n.config.Chain.Storage == "mysql" {
+		n.storage, err = storage.NewMysqlStorage(n.config.Chain.MysqlDsn, n.config.Chain.MysqlTable)
+	}else if n.config.Chain.Storage == "memory" {
+		n.storage, err = storage.NewMemoryStorage()
+	}else{
+		n.storage, err = storage.NewDiskStorage(n.config.Chain.Datadir)
+	}
+
 	if err != nil {
 		logging.CLog().WithFields(logrus.Fields{
 			"dir": n.config.Chain.Datadir,
+			"storage": n.config.Chain.Storage,
 			"err": err,
-		}).Fatal("Failed to open disk storage.")
+		}).Fatal("Failed to open "+n.config.Chain.Storage+" storage.")
+	}else{
+		logging.CLog().WithFields(logrus.Fields{
+			"dir": n.config.Chain.Datadir,
+			"storage": n.config.Chain.Storage,
+		}).Info("Success to open "+n.config.Chain.Storage+" storage.")
 	}
 
 	// net
