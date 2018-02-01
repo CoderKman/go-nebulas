@@ -61,8 +61,8 @@ func defaultConfig() string {
 		chain_id: 100
 		datadir: "data.db"
 		storage: "mysql"
-		mysql_dsn: "root:@/nebulas",
-		mysql_table:"nebchain",
+		mysql_dsn: "root:neb@/",
+		mysql_db:"nebuls",
 		genesis: "conf/default/genesis.conf"
 		keydir: "keydir"
 		coinbase: "eb31ad2d8a89a0ca6935c308d5425730430bc2d63f2573b8"
