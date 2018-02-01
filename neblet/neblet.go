@@ -101,7 +101,7 @@ func (n *Neblet) Setup() {
 
 	// storage
 	if n.config.Chain.Storage == "mysql" {
-		n.storage, err = storage.NewMysqlStorage(n.config.Chain.MysqlDsn, n.config.Chain.MysqlTable)
+		n.storage, err = storage.NewMysqlStorage(n.config.Chain.MysqlDsn, n.config.Chain.MysqlDb)
 	}else if n.config.Chain.Storage == "memory" {
 		n.storage, err = storage.NewMemoryStorage()
 	}else{
