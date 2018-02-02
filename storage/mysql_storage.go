@@ -154,19 +154,11 @@ func (storage *MysqlStorage) Get(key []byte) ([]byte, error) {
 func (storage *MysqlStorage) Put(key []byte, value []byte) error {
 
 	// del 
-	_, err := storage.Get(key)
-
-	if err == ErrKeyNotFound{ // insert 
-		_, err := storage.db.Exec( "INSERT INTO "+ tableName +" (`nkey`, `nvalue`) VALUES ( ? , ? )", key, value)
-		if (err != nil){
-			return err
-		}
-	}else { //update 
-		_ , err := storage.db.Exec( "UPDATE "+ tableName +" SET `nvalue` = ?  WHERE `nkey` = ?", value, key)
-		if (err != nil){
-			return err
-		}
+	_ , err := storage.db.Exec( "INSERT INTO "+ tableName +" (`nkey`, `nvalue`) VALUES ( ? , ? ) on  DUPLICATE key update `nvalue` = ? ", key, value, value)
+	if (err != nil){
+		return err
 	}
+
 	storage.cache.Add(byteutils.Hex(key), value)
 	return nil
 }
