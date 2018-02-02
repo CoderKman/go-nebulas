@@ -21,7 +21,7 @@
 | Field | Type             | Null | Key | Default | Extra |
 +-------+------------------+------+-----+---------+-------+
 | nkey   | varbinary(256)   | NO   | PRI | NULL    |       |
-| nvalue | varbinary(10240) | YES  |     | NULL    |       |
+| nvalue | blob | YES  |     | NULL    |       |
 +-------+------------------+------+-----+---------+-------+
 */
 package storage
@@ -42,7 +42,7 @@ var (
 	createTableStatements = []string{
 		`CREATE TABLE IF NOT EXISTS nebchain (
 			nkey varbinary(256) NOT NULL,
-			nvalue varbinary(10240) NOT NULL,
+			nvalue blob NOT NULL,
 			PRIMARY KEY (nkey)
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8;`,
 	}
@@ -65,12 +65,13 @@ func NewMysqlStorage(dsn, database string) (*MysqlStorage, error) {
 		return nil, err
 	}
 
-
 	if err := ensureDBExists(); err != nil {
 		return nil, err
 	}
 
 	db, err := sql.Open("mysql", dbDsn+dbName)
+	db.SetMaxOpenConns(500)
+    db.SetMaxIdleConns(200)
 
 	if err != nil {
 		return nil, err
