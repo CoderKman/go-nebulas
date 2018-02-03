@@ -207,6 +207,12 @@
   revision = "b497e2f366b8624394fb2e89c10ab607bebdde0b"
 
 [[projects]]
+  name = "github.com/juju/ratelimit"
+  packages = ["."]
+  revision = "59fac5042749a5afb9af70e813da1dd5474f0167"
+  version = "1.0.1"
+
+[[projects]]
   name = "github.com/lestrrat/go-file-rotatelogs"
   packages = ["."]
   revision = "9df8b44f21785240553882138c5df2e9cc1db910"
@@ -773,6 +779,10 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
+<<<<<<< HEAD
   inputs-digest = "9eddea041cc8cb8ef405da79c4b789e8a955c8d496cd44cfd29b5bf8a0db418d"
+=======
+  inputs-digest = "8c37aa9e3f6f33fdd9fd571760e59e37cf584df4e0c3fb5ff6622cf17849f1a7"
+>>>>>>> core: fix event trigger block the chain execution
   solver-name = "gps-cdcl"
   solver-version = 1
