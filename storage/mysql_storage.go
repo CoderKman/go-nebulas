@@ -16,29 +16,30 @@
 // along with the go-nebulas library.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-/*
+/*Package storage scheme
 +-------+------------------+------+-----+---------+-------+
 | Field | Type             | Null | Key | Default | Extra |
 +-------+------------------+------+-----+---------+-------+
-| nkey   | varbinary(256)   | NO   | PRI | NULL    |       |
-| nvalue | blob | YES  |     | NULL    |       |
+| nkey   | varbinary(256)  | NO   | PRI | NULL    |       |
+| nvalue | blob            | YES  |     | NULL    |       |
 +-------+------------------+------+-----+---------+-------+
 */
 package storage
 
 import (
+	"database/sql"
+
+	"github.com/go-sql-driver/mysql"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/nebulasio/go-nebulas/util/byteutils"
-	"database/sql"
-	"github.com/go-sql-driver/mysql"
 	"github.com/nebulasio/go-nebulas/util/logging"
 	"github.com/sirupsen/logrus"
 )
 
 var (
-	dbDsn  string
-	dbName string
-	tableName  = "nebchain"
+	dbDsn                 string
+	dbName                string
+	tableName             = "nebchain"
 	createTableStatements = []string{
 		`CREATE TABLE IF NOT EXISTS nebchain (
 			nkey varbinary(256) NOT NULL,
@@ -47,8 +48,6 @@ var (
 		) ENGINE=InnoDB DEFAULT CHARSET=utf8;`,
 	}
 )
-
-
 
 // MysqlStorage the nodes in trie.
 type MysqlStorage struct {
@@ -59,7 +58,7 @@ type MysqlStorage struct {
 // NewMysqlStorage init a storage
 func NewMysqlStorage(dsn, database string) (*MysqlStorage, error) {
 	dbDsn = dsn
-	dbName = database 
+	dbName = database
 	cache, err := lru.New(40960)
 	if err != nil {
 		return nil, err
@@ -71,7 +70,7 @@ func NewMysqlStorage(dsn, database string) (*MysqlStorage, error) {
 
 	db, err := sql.Open("mysql", dbDsn+dbName)
 	db.SetMaxOpenConns(500)
-    db.SetMaxIdleConns(200)
+	db.SetMaxIdleConns(200)
 
 	if err != nil {
 		return nil, err
@@ -82,7 +81,6 @@ func NewMysqlStorage(dsn, database string) (*MysqlStorage, error) {
 	}, nil
 }
 
-
 func ensureDBExists() error {
 
 	conn, err := sql.Open("mysql", dbDsn)
@@ -91,7 +89,7 @@ func ensureDBExists() error {
 	}
 	defer conn.Close()
 
-	if _, err := conn.Exec("USE "+dbName); err != nil {
+	if _, err := conn.Exec("USE " + dbName); err != nil {
 		// MySQL error 1049 is "database does not exist"
 		if mErr, ok := err.(*mysql.MySQLError); ok && mErr.Number == 1049 {
 			return createDBTable(conn)
@@ -101,33 +99,32 @@ func ensureDBExists() error {
 		return err
 	}
 
-	if _, err := conn.Exec("DESCRIBE "+ tableName); err != nil {
+	if _, err := conn.Exec("DESCRIBE " + tableName); err != nil {
 		// MySQL error 1146 is "table does not exist"
 		if mErr, ok := err.(*mysql.MySQLError); ok && mErr.Number == 1146 {
 			return createDBTable(conn)
 		}
 		// Unknown error.
-		return err;
+		return err
 	}
 
 	return nil
 }
 
-
 // createTable creates the table, and if necessary, the database.
 func createDBTable(conn *sql.DB) error {
 
-	var  sqls = []string {
-		`CREATE DATABASE IF NOT EXISTS `+ dbName +` DEFAULT CHARACTER SET = 'utf8' DEFAULT COLLATE 'utf8_general_ci';`,
-		`USE `+dbName+`;`,
+	var sqls = []string{
+		`CREATE DATABASE IF NOT EXISTS ` + dbName + ` DEFAULT CHARACTER SET = 'utf8' DEFAULT COLLATE 'utf8_general_ci';`,
+		`USE ` + dbName + `;`,
 	}
 
 	sqls = append(sqls, createTableStatements...)
 
 	logging.CLog().WithFields(logrus.Fields{
-		"sql": sqls, 
+		"sql": sqls,
 	}).Info("create DB sql.")
-	for _, stmt := range sqls{
+	for _, stmt := range sqls {
 		_, err := conn.Exec(stmt)
 		if err != nil {
 			return err
@@ -142,8 +139,8 @@ func (storage *MysqlStorage) Get(key []byte) ([]byte, error) {
 		return value.([]byte), nil
 	}
 
-	var value  []byte
-	err := storage.db.QueryRow("SELECT `nvalue` FROM "+tableName+ " WHERE `nkey` = ? ", key).Scan(&value)
+	var value []byte
+	err := storage.db.QueryRow("SELECT `nvalue` FROM "+tableName+" WHERE `nkey` = ? ", key).Scan(&value)
 	if err != nil && err == sql.ErrNoRows {
 		return nil, ErrKeyNotFound
 	}
@@ -153,9 +150,9 @@ func (storage *MysqlStorage) Get(key []byte) ([]byte, error) {
 // Put put the key-value entry to Storage
 func (storage *MysqlStorage) Put(key []byte, value []byte) error {
 
-	// del 
-	_ , err := storage.db.Exec( "INSERT INTO "+ tableName +" (`nkey`, `nvalue`) VALUES ( ? , ? ) on  DUPLICATE key update `nvalue` = ? ", key, value, value)
-	if (err != nil){
+	// del
+	_, err := storage.db.Exec("INSERT INTO "+tableName+" (`nkey`, `nvalue`) VALUES ( ? , ? ) on  DUPLICATE key update `nvalue` = ? ", key, value, value)
+	if err != nil {
 		return err
 	}
 
@@ -166,7 +163,7 @@ func (storage *MysqlStorage) Put(key []byte, value []byte) error {
 // Del delete the key in Storage.
 func (storage *MysqlStorage) Del(key []byte) error {
 
-	if _, err := storage.db.Exec("DELETE FROM "+ tableName +" WHERE `nkey`  = ? ", key); err != nil {
+	if _, err := storage.db.Exec("DELETE FROM "+tableName+" WHERE `nkey`  = ? ", key); err != nil {
 		return err
 	}
 	storage.cache.Remove(byteutils.Hex(key))
