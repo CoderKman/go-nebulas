@@ -46,6 +46,24 @@ message NetworkConfig {
     uint32 network_id = 4;
 }
 
+message MysqlConfig{
+
+	// mysql DSN (Data Source Name)
+	// [username[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN]
+    string dsn = 1;
+
+	// mysql params  
+    string params = 2;
+
+	// mysql db 
+    string dbname  = 3;
+
+	// max open conn  
+	int32 max_open_conn = 4;
+			
+	int32 max_idel_conn = 5;
+}
+
 message ChainConfig {
     // ChainID.
     uint32 chain_id = 1;
@@ -61,12 +79,8 @@ message ChainConfig {
 	// storage type mysql leveldb memory
     string storage = 13;
 
-	// mysql DSN (Data Source Name)
-	// [username[:password]@][protocol[(address)]]/dbname[?param1=value1&...&paramN=valueN]
-    string mysql_dsn = 18;
-
-	// mysql db 
-    string mysql_db  = 19;
+	// mysql config
+	MysqlConfig mysql = 14;
 
     // start mine at launch
     bool start_mine = 20;
