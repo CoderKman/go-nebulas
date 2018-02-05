@@ -62,6 +62,83 @@ func TestBatchTrie_Batch(t *testing.T) {
 	assert.NotNil(t, err4)
 }
 
+func TestBatchTrie_Merge(t *testing.T) {
+	storage, _ := storage.NewMemoryStorage()
+	tr, _ := NewBatchTrie(nil, storage)
+	assert.Equal(t, []byte(nil), tr.trie.RootHash())
+
+	tr.BeginBatch()
+
+	// add a new leaf node
+	addr1, _ := byteutils.FromHex("1f345678e9")
+	val1 := []byte("leaf 1")
+	tr.Put(addr1, val1)
+
+	// add a new leaf node with 3-length common prefix
+	addr2, _ := byteutils.FromHex("1f355678e9")
+	val2 := []byte("leaf 2")
+	tr.Put(addr2, val2)
+
+	tr1, _ := NewBatchTrie(nil, storage)
+	assert.Equal(t, []byte(nil), tr1.trie.RootHash())
+
+	tr2, _ := NewBatchTrie(nil, storage)
+	assert.Equal(t, []byte(nil), tr2.trie.RootHash())
+
+	tr1.BeginBatch()
+
+	tr2.BeginBatch()
+
+	// add a new leaf node
+	tr1.Put(addr1, val1)
+
+	// add a new leaf node with 3-length common prefix
+	tr1.Put(addr2, val2)
+
+	addr3, _ := byteutils.FromHex("1f35678e90")
+	val3 := []byte("leaf 1")
+	tr2.Put(addr3, val3)
+	addr, _ := byteutils.FromHex("1f3478e9011")
+	tr2.Get(addr)
+	tr.Get(addr)
+
+
+	assert.Equal(t, true, tr.RelatedTo(tr1))
+	assert.Equal(t, false, tr.RelatedTo(tr2))
+	
+	ret, _ := tr.MergeWith(tr2)
+	assert.Equal(t, true, ret)
+
+	tr.Commit()
+	tr.BeginBatch()
+
+	tr1.Commit()
+	tr1.BeginBatch()
+
+	tr2.Commit()
+	tr2.BeginBatch()
+	// add a new node with 2-length common prefix
+	addr4, _ := byteutils.FromHex("1f555678e9")
+	val4 := []byte{}
+	tr.Put(addr4, val4)
+	// update node leaf1
+	val11 := []byte("leaf 11")
+	tr.Put(addr1, val11)
+	tr.Del(addr2)
+	tr.Del(addr1)
+
+	tr.RollBack()
+
+	// get node "1f345678e9"
+	checkVal1, _ := tr.Get(addr1)
+	assert.Equal(t, checkVal1, val1)
+	// get node "1f355678e9"
+	checkVal2, _ := tr.Get(addr2)
+	assert.Equal(t, checkVal2, val2)
+	// get node "1f555678e9"
+	_, err4 := tr.Get(addr3)
+	assert.NotNil(t, err4)
+}
 func TestBatchTrie_Iterator(t *testing.T) {
 	storage, _ := storage.NewMemoryStorage()
 	tr, _ := NewBatchTrie(nil, storage)
