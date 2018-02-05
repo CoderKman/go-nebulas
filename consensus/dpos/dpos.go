@@ -373,10 +373,8 @@ func deadline(now int64) int64 {
 	nextSlot := nextSlot(now)
 	remain := nextSlot - now
 	if core.MaxMintDuration > remain {
-		metricsTxPack.Update(nextSlot - now)
 		return nextSlot
 	}
-	metricsTxPack.Update(core.MaxMintDuration)
 	return now + core.MaxMintDuration
 }
 
@@ -464,7 +462,7 @@ func (p *Dpos) mintBlock(now int64) error {
 
 	logging.CLog().WithFields(logrus.Fields{
 		"tail":     tail,
-		"now":      now,
+		"start":    now,
 		"deadline": deadline,
 		"expected": context.Proposer.Hex(),
 		"actual":   p.coinbase,
@@ -489,16 +487,24 @@ func (p *Dpos) mintBlock(now int64) error {
 		<-timer
 	}
 
+	logging.CLog().WithFields(logrus.Fields{
+		"tail":     tail,
+		"block":    block,
+		"start":    now,
+		"packed":   current,
+		"deadline": deadline,
+		"slot":     slot,
+		"end":      time.Now().Unix(),
+	}).Info("Minted new block")
+
 	if err := p.broadcast(tail, block); err != nil {
 		return err
 	}
 
 	logging.CLog().WithFields(logrus.Fields{
-		"tail":     tail,
-		"block":    block,
-		"now":      time.Now().Unix(),
-		"deadline": deadline,
-	}).Info("Minted new block")
+		"tail":  tail,
+		"block": block,
+	}).Info("Broadcasted new block")
 	return nil
 }
 

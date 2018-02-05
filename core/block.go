@@ -465,6 +465,7 @@ func (block *Block) ReturnTransactions() {
 
 // CollectTransactions and add them to block.
 func (block *Block) CollectTransactions(deadline int64) {
+	metricsBlockPackTxTime.Update(0)
 	if block.sealed {
 		logging.VLog().WithFields(logrus.Fields{
 			"block": block,
@@ -473,6 +474,10 @@ func (block *Block) CollectTransactions(deadline int64) {
 
 	now := time.Now().Unix()
 	elapse := deadline - now
+	logging.VLog().WithFields(logrus.Fields{
+		"elapse": elapse,
+	}).Info("Packing tx elapsed time.")
+	metricsBlockPackTxTime.Update(elapse)
 	if elapse <= 0 {
 		return
 	}
@@ -657,14 +662,13 @@ func (block *Block) Seal() error {
 }
 
 func (block *Block) String() string {
-	return fmt.Sprintf(`{"height": %d, "hash": "%s", "parent_hash": "%s", "state": "%s", "txs": "%s", "events": "%s", "nonce": %d, "timestamp": %d, "dynasty": "%s", "tx": %d}`,
+	return fmt.Sprintf(`{"height": %d, "hash": "%s", "parent_hash": "%s", "state": "%s", "txs": "%s", "events": "%s", "timestamp": %d, "dynasty": "%s", "tx": %d}`,
 		block.height,
 		block.header.hash,
 		block.header.parentHash,
 		block.header.stateRoot,
 		block.header.txsRoot,
 		block.header.eventsRoot,
-		block.header.nonce,
 		block.header.timestamp,
 		byteutils.Hex(block.header.dposContext.DynastyRoot),
 		len(block.transactions),
@@ -714,6 +718,9 @@ func (block *Block) VerifyExecution(parent *Block, consensus Consensus) error {
 }
 
 func (block *Block) triggerEvent() {
+	logging.VLog().WithFields(logrus.Fields{
+		"count": len(block.eventEmitter.eventCh),
+	}).Debug("Start TriggerEvent")
 
 	for _, v := range block.transactions {
 		var topic string
@@ -748,6 +755,10 @@ func (block *Block) triggerEvent() {
 		Data:  block.String(),
 	}
 	block.eventEmitter.Trigger(e)
+
+	logging.VLog().WithFields(logrus.Fields{
+		"count": len(block.eventEmitter.eventCh),
+	}).Debug("Stop TriggerEvent")
 }
 
 // VerifyIntegrity verify block's hash, txs' integrity and consensus acceptable.

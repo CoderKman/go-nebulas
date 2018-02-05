@@ -61,8 +61,10 @@ deploy-libs:
 	$(LDCONFIG)
 
 build:
-	cd cmd/neb; go build $(LDFLAGS) -o ../../$(BINARY)
-	cd cmd/crashreporter; go build $(LDFLAGS) -o ../../nebulas_crashreporter
+	cd cmd/neb; go build $(LDFLAGS) -o ../../$(BINARY)-$(COMMIT)
+	cd cmd/crashreporter; go build $(LDFLAGS) -o ../../neb-crashreporter
+	-rm -f $(BINARY)
+	ln -s $(BINARY)-$(COMMIT) $(BINARY)
 
 build-linux:
 	cd cmd/neb; GOOS=linux GOARCH=amd64 go build $(LDFLAGS) -o ../../$(BINARY)-linux
@@ -85,4 +87,5 @@ clean:
 	-rm -f $(TEST_REPORT)
 	-rm -f $(TEST_XUNIT_REPORT)
 	-rm -f $(BINARY)
+	-rm -f $(BINARY)-$(COMMIT)
 

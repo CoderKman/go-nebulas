@@ -100,8 +100,8 @@ func NewBlockPool(size int) (*BlockPool, error) {
 // RegisterInNetwork register message subscriber in network.
 func (pool *BlockPool) RegisterInNetwork(ns net.Service) {
 	ns.Register(net.NewSubscriber(pool, pool.receiveBlockMessageCh, true, MessageTypeNewBlock))
-	ns.Register(net.NewSubscriber(pool, pool.receiveBlockMessageCh, true, MessageTypeDownloadedBlockReply))
-	ns.Register(net.NewSubscriber(pool, pool.receiveDownloadBlockMessageCh, true, MessageTypeDownloadedBlock))
+	ns.Register(net.NewSubscriber(pool, pool.receiveBlockMessageCh, false, MessageTypeDownloadedBlockReply))
+	ns.Register(net.NewSubscriber(pool, pool.receiveDownloadBlockMessageCh, false, MessageTypeDownloadedBlock))
 	pool.ns = ns
 }
 
@@ -556,12 +556,12 @@ func (lb *linkedBlock) travelToLinkAndReturnAllValidBlocks(parentBlock *Block) (
 	}
 	// executionAt := time.Now().Unix()
 
-	/* 	logging.VLog().WithFields(logrus.Fields{
-		"block":          lb.block,
-		"time.link":      linkAt - startAt,
-		"time.execution": executionAt - linkAt,
-		"time.all":       time.Now().Unix() - startAt,
-	}).Info("Block Verified.") */
+	logging.VLog().WithFields(logrus.Fields{
+		"block": lb.block,
+		/* 		"time.link":      linkAt - startAt,
+		   		"time.execution": executionAt - linkAt,
+		   		"time.all":       time.Now().Unix() - startAt, */
+	}).Info("Block Verified.")
 
 	allBlocks := []*Block{lb.block}
 	tailBlocks := []*Block{}

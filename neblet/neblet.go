@@ -101,25 +101,30 @@ func (n *Neblet) Setup() {
 
 	// storage
 	if n.config.Chain.Storage == "mysql" {
+<<<<<<< HEAD
 		n.storage, err = storage.NewMysqlStorage(n.config.Chain.Mysql.Dsn, n.config.Chain.Mysql.Dbname, n.config.Chain.Mysql.Params, 
 				n.config.Chain.Mysql.MaxOpenConn, n.config.Chain.Mysql.MaxIdelConn)
 	}else if n.config.Chain.Storage == "memory" {
+=======
+		n.storage, err = storage.NewMysqlStorage(n.config.Chain.MysqlDsn, n.config.Chain.MysqlDb)
+	} else if n.config.Chain.Storage == "memory" {
+>>>>>>> d6621bb73dcc54754dca520cae8aa367401f631c
 		n.storage, err = storage.NewMemoryStorage()
-	}else{
+	} else {
 		n.storage, err = storage.NewDiskStorage(n.config.Chain.Datadir)
 	}
 
 	if err != nil {
 		logging.CLog().WithFields(logrus.Fields{
-			"dir": n.config.Chain.Datadir,
+			"dir":     n.config.Chain.Datadir,
 			"storage": n.config.Chain.Storage,
-			"err": err,
-		}).Fatal("Failed to open "+n.config.Chain.Storage+" storage.")
-	}else{
+			"err":     err,
+		}).Fatal("Failed to open " + n.config.Chain.Storage + " storage.")
+	} else {
 		logging.CLog().WithFields(logrus.Fields{
-			"dir": n.config.Chain.Datadir,
+			"dir":     n.config.Chain.Datadir,
 			"storage": n.config.Chain.Storage,
-		}).Info("Success to open "+n.config.Chain.Storage+" storage.")
+		}).Info("Success to open " + n.config.Chain.Storage + " storage.")
 	}
 
 	// net
