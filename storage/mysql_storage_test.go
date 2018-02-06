@@ -25,7 +25,7 @@ import (
 )
 
 func TestNewMysqlStorage(t *testing.T) {
-	storage, _ := NewMysqlStorage("root:@/", "nebchain")
+	storage, _ := NewMysqlStorage("root:@/", "nebchain", "?loc=Local", 500, 200)
 	keys := [][]byte{[]byte("key1"), []byte("key2")}
 	values := [][]byte{[]byte("value1"), []byte("value2")}
 	storage.Put(keys[0], values[0])

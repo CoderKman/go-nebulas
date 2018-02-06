@@ -779,10 +779,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-<<<<<<< HEAD
-  inputs-digest = "9eddea041cc8cb8ef405da79c4b789e8a955c8d496cd44cfd29b5bf8a0db418d"
-=======
-  inputs-digest = "8c37aa9e3f6f33fdd9fd571760e59e37cf584df4e0c3fb5ff6622cf17849f1a7"
->>>>>>> core: fix event trigger block the chain execution
+  inputs-digest = "ffd55333b499b09dcf80e28081ae522d91f5f622ec9c05af6d03d895551df3f1"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -37,13 +37,13 @@ import (
 )
 
 var (
-	dbDsn  string
-	dbName string
-	dbParams string
+	dbDsn         string
+	dbName        string
+	dbParams      string
 	dbMaxOpenConn int32
 	dbMaxIdelConn int32
 
-	tableName  = "nebchain"
+	tableName             = "nebchain"
 	createTableStatements = []string{
 		`CREATE TABLE IF NOT EXISTS nebchain (
 			nkey varbinary(256) NOT NULL,
@@ -60,7 +60,7 @@ type MysqlStorage struct {
 }
 
 // NewMysqlStorage init a storage
-func NewMysqlStorage(dsn, database ,params string, maxOpenConn, maxIdelConn int32) (*MysqlStorage, error) {
+func NewMysqlStorage(dsn, database, params string, maxOpenConn, maxIdelConn int32) (*MysqlStorage, error) {
 	dbDsn = dsn
 	dbName = database
 	dbParams = params
@@ -77,7 +77,7 @@ func NewMysqlStorage(dsn, database ,params string, maxOpenConn, maxIdelConn int3
 
 	db, err := sql.Open("mysql", dbDsn+dbName+dbParams)
 	db.SetMaxOpenConns(int(dbMaxOpenConn))
-    db.SetMaxIdleConns(int(dbMaxIdelConn))
+	db.SetMaxIdleConns(int(dbMaxIdelConn))
 
 	if err != nil {
 		return nil, err

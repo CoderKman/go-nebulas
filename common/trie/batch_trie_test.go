@@ -102,10 +102,9 @@ func TestBatchTrie_Merge(t *testing.T) {
 	tr2.Get(addr)
 	tr.Get(addr)
 
-
 	assert.Equal(t, true, tr.RelatedTo(tr1))
 	assert.Equal(t, false, tr.RelatedTo(tr2))
-	
+
 	ret, _ := tr.MergeWith(tr2)
 	assert.Equal(t, true, ret)
 
