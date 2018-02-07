@@ -114,7 +114,7 @@ func TestBatchTrie_RelatedMerge(t *testing.T) {
 	ret, _ := tr.MergeWith(tr1)
 	assert.Equal(t, false, ret)
 
-	// merge 
+	// merge
 	ret, trm := tr.MergeWith(tr2)
 	assert.Equal(t, true, ret)
 
