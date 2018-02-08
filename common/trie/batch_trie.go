@@ -36,10 +36,11 @@ type Entry struct {
 
 // BatchTrie is a trie that supports batch task
 type BatchTrie struct {
-	trie       *Trie
-	changelog  []*Entry
-	batching   bool
-	operatelog []*Entry
+	trie         *Trie
+	changelog    []*Entry
+	batching     bool
+	initialoplog map[string]*Entry
+	finaloplog   map[string]*Entry
 }
 
 // NewBatchTrie if rootHash is nil, create a new BatchTrie, otherwise, build an existed BatchTrie
@@ -48,7 +49,8 @@ func NewBatchTrie(rootHash []byte, storage storage.Storage) (*BatchTrie, error) 
 	if err != nil {
 		return nil, err
 	}
-	return &BatchTrie{trie: t, batching: false}, nil
+
+	return &BatchTrie{trie: t, batching: false, initialoplog: make(map[string]*Entry), finaloplog: make(map[string]*Entry)}, nil
 }
 
 // RootHash of the BatchTrie
@@ -62,7 +64,7 @@ func (bt *BatchTrie) Clone() (*BatchTrie, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &BatchTrie{trie: tr, changelog: bt.changelog, batching: bt.batching, operatelog: bt.operatelog}, nil
+	return &BatchTrie{trie: tr, changelog: bt.changelog, batching: bt.batching, initialoplog: make(map[string]*Entry), finaloplog: make(map[string]*Entry)}, nil
 }
 
 // Get the value to the key in BatchTrie
@@ -71,7 +73,14 @@ func (bt *BatchTrie) Get(key []byte) ([]byte, error) {
 	val, err := bt.trie.Get(key)
 	entry := &Entry{Get, key, val, val}
 
-	bt.operatelog = append(bt.operatelog, entry)
+	if _, ok := bt.initialoplog[byteutils.Hex(entry.key)]; !ok {
+		bt.initialoplog[byteutils.Hex(entry.key)] = entry
+	}
+
+	if _, ok := bt.finaloplog[byteutils.Hex(entry.key)]; !ok || (ok && entry.action == Get) {
+		bt.finaloplog[byteutils.Hex(entry.key)] = entry
+	}
+
 	return val, err
 }
 
@@ -90,7 +99,10 @@ func (bt *BatchTrie) Put(key []byte, val []byte) ([]byte, error) {
 		return nil, putErr
 	}
 
-	bt.operatelog = append(bt.operatelog, entry)
+	if _, ok := bt.initialoplog[byteutils.Hex(entry.key)]; !ok {
+		bt.initialoplog[byteutils.Hex(entry.key)] = entry
+	}
+	bt.finaloplog[byteutils.Hex(entry.key)] = entry
 
 	if bt.batching {
 		bt.changelog = append(bt.changelog, entry)
@@ -110,7 +122,11 @@ func (bt *BatchTrie) Del(key []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	bt.operatelog = append(bt.operatelog, entry)
+
+	if _, ok := bt.initialoplog[byteutils.Hex(entry.key)]; !ok {
+		bt.initialoplog[byteutils.Hex(entry.key)] = entry
+	}
+	bt.finaloplog[byteutils.Hex(entry.key)] = entry
 
 	if bt.batching {
 		bt.changelog = append(bt.changelog, entry)
@@ -179,8 +195,6 @@ func (bt *BatchTrie) BeginBatch() {
 func (bt *BatchTrie) Commit() {
 	// clear changelog
 	bt.changelog = bt.changelog[:0]
-	bt.operatelog = bt.operatelog[:0]
-
 	bt.batching = false
 }
 
@@ -195,7 +209,10 @@ func (bt *BatchTrie) RollBack() {
 	}
 	// clear changelog
 	bt.changelog = bt.changelog[:0]
-	bt.operatelog = bt.operatelog[:0]
+
+	bt.initialoplog = nil
+	bt.finaloplog = nil
+
 	// rollback
 	for _, entry := range changelog {
 		switch entry.action {
@@ -242,91 +259,62 @@ func HashDomainsPrefix(domains ...string) []byte {
 	return key[:]
 }
 
+// RelatedTo if two have same key and action is not GET return true else return false
 func (bt *BatchTrie) RelatedTo(tobt *BatchTrie) bool {
 
-	operatelog := make(map[string]*Entry)
-	for _, entry := range bt.operatelog {
-		if _, ok := operatelog[byteutils.Hex(entry.key)]; !ok || (ok && entry.action != Get) {
-			operatelog[byteutils.Hex(entry.key)] = entry
-		}
-	}
+	for _, toentry := range bt.finaloplog {
 
-	tooperatelog := make(map[string]*Entry)
-	for _, entry := range tobt.operatelog {
-		if _, ok := tooperatelog[byteutils.Hex(entry.key)]; !ok || (ok && entry.action != Get) {
-			tooperatelog[byteutils.Hex(entry.key)] = entry
-		}
-	}
-
-	for _, toentry := range tooperatelog {
-
-		entry, ok := operatelog[byteutils.Hex(toentry.key)]
-
-		if ok {
+		if entry, ok := tobt.finaloplog[byteutils.Hex(toentry.key)]; ok {
 			if toentry.action != Get || entry.action != Get {
 				return true
 			}
-			// entry GET toentry not GET  todo
 		}
 	}
 
 	return false
 }
 
+// MergeWith merge two batchtrie if key value is equal return false
 func (bt *BatchTrie) MergeWith(tobt *BatchTrie) (bool, *BatchTrie) {
 
 	//record the last state
-	operatelog := make(map[string]*Entry)
-	for _, entry := range bt.operatelog {
-		if _, ok := operatelog[byteutils.Hex(entry.key)]; !ok || (ok && entry.action != Get) {
-			operatelog[byteutils.Hex(entry.key)] = entry
-		}
-	}
+	initialoplog := bt.initialoplog
 
 	// the first state compare to the last state
-	tooperatelog := make(map[string]*Entry)
-	for _, toentry := range tobt.operatelog {
-		if _, ok := tooperatelog[byteutils.Hex(toentry.key)]; !ok {
-			tooperatelog[byteutils.Hex(toentry.key)] = toentry
+	for _, toentry := range tobt.initialoplog {
+		if entry, ok := bt.finaloplog[byteutils.Hex(toentry.key)]; ok {
 
-			if entry, ok := operatelog[byteutils.Hex(toentry.key)]; ok {
-
-				if !bytes.Equal(toentry.old, entry.update) {
-					return false, nil
-				}
+			if !bytes.Equal(toentry.old, entry.update) {
+				return false, nil
 			}
+		}
+		if _, ok := bt.initialoplog[byteutils.Hex(toentry.key)]; !ok {
+			initialoplog[byteutils.Hex(toentry.key)] = toentry
 		}
 	}
 
-	//merge
 	// Clone a the BatchTrie
 	newbt, err := bt.Clone()
 	if err != nil {
 		return false, nil
 	}
-
-	// merge changelong
-	tochangelog := make(map[string]*Entry)
-	for _, entry := range tobt.changelog {
-		tochangelog[byteutils.Hex(entry.key)] = entry
-		if newbt.batching {
-			newbt.changelog = append(newbt.changelog, entry)
-		}
-	}
+	newbt.finaloplog = bt.finaloplog
+	newbt.initialoplog = initialoplog
 
 	// merge trie
-	for _, entry := range tochangelog {
+	for _, entry := range tobt.finaloplog {
 		switch entry.action {
 		case Delete:
 			newbt.trie.Del(entry.key)
+			newbt.finaloplog[byteutils.Hex(entry.key)] = entry
 		case Update, Insert:
 			newbt.trie.Put(entry.key, entry.update)
+			newbt.finaloplog[byteutils.Hex(entry.key)] = entry
+		case Get:
+			if _, ok := newbt.initialoplog[byteutils.Hex(entry.key)]; !ok || (ok && entry.action == Get) {
+				newbt.initialoplog[byteutils.Hex(entry.key)] = entry
+			}
 		}
-	}
-
-	// merge operatelog
-	for _, entry := range tobt.operatelog {
-		newbt.operatelog = append(newbt.operatelog, entry)
 	}
 
 	return true, newbt
