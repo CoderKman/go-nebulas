@@ -457,19 +457,19 @@ const (
 )
 
 type worldState struct {
-	block    *Block
+	ctx      *Block
 	parent   *worldState
 	children []*worldState
 	tx       *Transaction
 }
 
-func newWorldState(block *Block, tx *Transaction) (*worldState, error) {
+func newWorldState(ctx *Block, tx *Transaction) *worldState {
 	return &worldState{
-		block:    block,
+		ctx:      ctx,
 		parent:   nil,
 		children: []*worldState{},
 		tx:       tx,
-	}, nil
+	}
 }
 
 func (ws *worldState) RelatedTo(s *worldState) bool {
@@ -477,6 +477,10 @@ func (ws *worldState) RelatedTo(s *worldState) bool {
 }
 
 func (ws *worldState) MergeWith(s *worldState) (*worldState, error) {
+	return nil, nil
+}
+
+func (ws *worldState) Link(s *worldState) (*worldState, error) {
 	// search
 	// merge
 	// backtrace
@@ -503,15 +507,19 @@ func (block *Block) CollectTransactions(deadline int64) {
 	}
 
 	deadlineTimer := time.NewTimer(time.Duration(elapse) * time.Second)
+	token := make(chan bool, 64)
 	timeout := make(chan bool, 1)
 
 	collected := make(map[string]*Transaction)
 	status := make(map[string]txStatus)
 	var mergeLock sync.RWMutex
-	root, err := newWorldState(block, nil)
+
+	ctx, err := block.Clone()
 	if err != nil {
 		return
 	}
+	rootWorldState := newWorldState(ctx, nil)
+
 	pool := block.txPool
 
 	// execute transaction.
@@ -522,16 +530,17 @@ func (block *Block) CollectTransactions(deadline int64) {
 			collected[key] = tx
 			status[key] = pending
 
-			txBlock, err := root.block.Clone()
+			ctx, err := rootWorldState.ctx.Clone()
 			if err != nil {
 				return
 			}
 
+			token <- true
 			go func() {
-				txBlock.begin()
-				giveback, err := txBlock.executeTransaction(tx)
+				ctx.begin()
+				giveback, err := ctx.executeTransaction(tx)
 				if err != nil {
-					txBlock.rollback()
+					ctx.rollback()
 					status[key] = failure
 					if giveback {
 						status[key] = sendback
@@ -543,24 +552,18 @@ func (block *Block) CollectTransactions(deadline int64) {
 						"giveback": giveback,
 					}).Debug("invalid tx.")
 				} else {
-					txBlock.commit()
+					ctx.commit()
 					status[key] = success
 					logging.VLog().WithFields(logrus.Fields{
 						"tx": tx,
 					}).Debug("packed tx.")
 
-					state, err := newWorldState(txBlock, tx)
-					if err != nil {
-						return
-					}
-
 					mergeLock.Lock()
-					newState, err := root.MergeWith(state)
-					if err == nil {
-						root = newState
-					}
+					worldState := newWorldState(ctx, tx)
+					rootWorldState.Link(worldState)
 					mergeLock.Unlock()
 				}
+				<-token
 			}()
 
 			select {
@@ -574,7 +577,6 @@ func (block *Block) CollectTransactions(deadline int64) {
 	}()
 
 	<-timeout
-	// put tx back to transaction_pool.
 	go func() {
 		// giveback transactions.
 		for k, v := range collected {
@@ -590,7 +592,7 @@ func (block *Block) CollectTransactions(deadline int64) {
 			}
 		}
 	}()
-	block = root.block
+	block = rootWorldState.ctx
 }
 
 // Sealed return true if block seals. Otherwise return false.
