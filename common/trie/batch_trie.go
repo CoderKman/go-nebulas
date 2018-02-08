@@ -210,9 +210,6 @@ func (bt *BatchTrie) RollBack() {
 	// clear changelog
 	bt.changelog = bt.changelog[:0]
 
-	bt.initialoplog = nil
-	bt.finaloplog = nil
-
 	// rollback
 	for _, entry := range changelog {
 		switch entry.action {
@@ -222,6 +219,13 @@ func (bt *BatchTrie) RollBack() {
 			bt.trie.Put(entry.key, entry.old)
 		}
 	}
+
+	bt.initialoplog = nil
+	bt.finaloplog = nil
+
+	bt.initialoplog = make(map[string]*Entry)
+	bt.finaloplog = make(map[string]*Entry)
+
 	bt.batching = false
 }
 
