@@ -259,7 +259,7 @@ func HashDomainsPrefix(domains ...string) []byte {
 	return key[:]
 }
 
-// RelatedTo if two have same key and action is not GET return true else return false
+// RelatedTo a batch trie, return true if their operations are related
 func (bt *BatchTrie) RelatedTo(tobt *BatchTrie) bool {
 
 	for _, toentry := range bt.finaloplog {
@@ -274,10 +274,10 @@ func (bt *BatchTrie) RelatedTo(tobt *BatchTrie) bool {
 	return false
 }
 
-// MergeWith merge two batchtrie if key value is equal return false
-func (bt *BatchTrie) MergeWith(tobt *BatchTrie) (bool, *BatchTrie) {
+// MergeWith a batch trie, return a new merged batch trie if there's no conflict
+func (bt *BatchTrie) MergeWith(tobt *BatchTrie) (*BatchTrie, error) {
 
-	//record the last state
+	//record the initial state
 	initialoplog := bt.initialoplog
 
 	// the first state compare to the last state
@@ -285,19 +285,21 @@ func (bt *BatchTrie) MergeWith(tobt *BatchTrie) (bool, *BatchTrie) {
 		if entry, ok := bt.finaloplog[byteutils.Hex(toentry.key)]; ok {
 
 			if !bytes.Equal(toentry.old, entry.update) {
-				return false, nil
+				return nil, errors.New("conflict")
 			}
 		}
+
 		if _, ok := bt.initialoplog[byteutils.Hex(toentry.key)]; !ok {
 			initialoplog[byteutils.Hex(toentry.key)] = toentry
 		}
 	}
 
-	// Clone a the BatchTrie
+	// Clone the BatchTrie
 	newbt, err := bt.Clone()
 	if err != nil {
-		return false, nil
+		return nil, err
 	}
+
 	newbt.finaloplog = bt.finaloplog
 	newbt.initialoplog = initialoplog
 
@@ -317,5 +319,5 @@ func (bt *BatchTrie) MergeWith(tobt *BatchTrie) (bool, *BatchTrie) {
 		}
 	}
 
-	return true, newbt
+	return newbt, nil
 }
