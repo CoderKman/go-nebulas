@@ -242,6 +242,7 @@ func HashDomainsPrefix(domains ...string) []byte {
 	return key[:]
 }
 
+// RelatedTo a batch trie, return true if their operations are related
 func (bt *BatchTrie) RelatedTo(tobt *BatchTrie) bool {
 
 	operatelog := make(map[string]*Entry)
@@ -273,7 +274,8 @@ func (bt *BatchTrie) RelatedTo(tobt *BatchTrie) bool {
 	return false
 }
 
-func (bt *BatchTrie) MergeWith(tobt *BatchTrie) (bool, *BatchTrie) {
+// MergeWith a batch trie, return a new merged batch trie if there's no conflict
+func (bt *BatchTrie) MergeWith(tobt *BatchTrie) (*BatchTrie, error) {
 
 	//record the last state
 	operatelog := make(map[string]*Entry)
@@ -292,7 +294,7 @@ func (bt *BatchTrie) MergeWith(tobt *BatchTrie) (bool, *BatchTrie) {
 			if entry, ok := operatelog[byteutils.Hex(toentry.key)]; ok {
 
 				if !bytes.Equal(toentry.old, entry.update) {
-					return false, nil
+					return nil, errors.New("conflict")
 				}
 			}
 		}
@@ -302,7 +304,7 @@ func (bt *BatchTrie) MergeWith(tobt *BatchTrie) (bool, *BatchTrie) {
 	// Clone a the BatchTrie
 	newbt, err := bt.Clone()
 	if err != nil {
-		return false, nil
+		return nil, err
 	}
 
 	// merge changelong
@@ -329,5 +331,5 @@ func (bt *BatchTrie) MergeWith(tobt *BatchTrie) (bool, *BatchTrie) {
 		newbt.operatelog = append(newbt.operatelog, entry)
 	}
 
-	return true, newbt
+	return newbt, nil
 }
