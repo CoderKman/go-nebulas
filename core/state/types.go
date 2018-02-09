@@ -19,6 +19,7 @@
 package state
 
 import (
+	"github.com/nebulasio/go-nebulas/common/trie"
 	"github.com/nebulasio/go-nebulas/storage"
 	"github.com/nebulasio/go-nebulas/util"
 	"github.com/nebulasio/go-nebulas/util/byteutils"
@@ -37,6 +38,9 @@ type Account interface {
 	Nonce() uint64
 	BirthPlace() byteutils.Hash
 	VarsHash() byteutils.Hash
+
+	Variables() *trie.BatchTrie
+	MergeWith(Account) (Account, error)
 
 	BeginBatch()
 	Commit()
@@ -59,6 +63,10 @@ type Account interface {
 type AccountState interface {
 	RootHash() (byteutils.Hash, error)
 	Accounts() ([]Account, error)
+
+	DirtyAccounts() map[byteutils.HexHash]Account
+	RelatedTo(AccountState) bool
+	MergeWith(AccountState) (AccountState, error)
 
 	BeginBatch()
 	Commit() error

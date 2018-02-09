@@ -142,6 +142,63 @@ func (dc *DposContext) RollBack() {
 	// logging.VLog().Debug("DposContext RollBack.")
 }
 
+func (dc *DposContext) RelatedTo(d *DposContext) bool {
+	if dc.dynastyTrie.RelatedTo(d.dynastyTrie) {
+		return true
+	}
+	if dc.nextDynastyTrie.RelatedTo(d.nextDynastyTrie) {
+		return true
+	}
+	if dc.delegateTrie.RelatedTo(d.delegateTrie) {
+		return true
+	}
+	if dc.voteTrie.RelatedTo(d.voteTrie) {
+		return true
+	}
+	if dc.candidateTrie.RelatedTo(d.candidateTrie) {
+		return true
+	}
+	if dc.mintCntTrie.RelatedTo(d.mintCntTrie) {
+		return true
+	}
+	return false
+}
+
+func (dc *DposContext) MergeWith(d *DposContext) (*DposContext, error) {
+	dynastyState, err := dc.dynastyTrie.MergeWith(d.dynastyTrie)
+	if err != nil {
+		return nil, err
+	}
+	nextDynastyState, err := dc.nextDynastyTrie.MergeWith(d.nextDynastyTrie)
+	if err != nil {
+		return nil, err
+	}
+	delegateState, err := dc.delegateTrie.MergeWith(d.delegateTrie)
+	if err != nil {
+		return nil, err
+	}
+	voteState, err := dc.voteTrie.MergeWith(d.voteTrie)
+	if err != nil {
+		return nil, err
+	}
+	candidateState, err := dc.candidateTrie.MergeWith(d.candidateTrie)
+	if err != nil {
+		return nil, err
+	}
+	mintState, err := dc.mintCntTrie.MergeWith(d.mintCntTrie)
+	if err != nil {
+		return nil, err
+	}
+	return &DposContext{
+		dynastyTrie:     dynastyState,
+		nextDynastyTrie: nextDynastyState,
+		delegateTrie:    delegateState,
+		voteTrie:        voteState,
+		candidateTrie:   candidateState,
+		mintCntTrie:     mintState,
+	}, nil
+}
+
 // Clone a dpos context
 func (dc *DposContext) Clone() (*DposContext, error) {
 	var err error

@@ -91,6 +91,32 @@ func (acc *account) FromBytes(bytes []byte, storage storage.Storage) error {
 	return nil
 }
 
+func (acc *account) MergeWith(a Account) (Account, error) {
+	if acc.Balance().Cmp(a.Balance().Int) != 0 {
+		return nil, errors.New("balance changed")
+	}
+	if !acc.Address().Equals(a.Address()) {
+		return nil, errors.New("address changed")
+	}
+	if acc.Nonce() != a.Nonce() {
+		return nil, errors.New("nonce changed")
+	}
+	if !acc.BirthPlace().Equals(a.BirthPlace()) {
+		return nil, errors.New("birth place changed")
+	}
+	vars, err := acc.Variables().MergeWith(a.Variables())
+	if err != nil {
+		return nil, err
+	}
+	return &account{
+		address:    acc.address,
+		balance:    util.NewUint128FromBigInt(acc.balance.Int),
+		nonce:      acc.nonce,
+		variables:  vars,
+		birthPlace: acc.birthPlace,
+	}, nil
+}
+
 // Balance return account's balance
 func (acc *account) Balance() *util.Uint128 {
 	return acc.balance
@@ -104,6 +130,10 @@ func (acc *account) Address() byteutils.Hash {
 // Nonce return account's nonce
 func (acc *account) Nonce() uint64 {
 	return acc.nonce
+}
+
+func (acc *account) Variables() *trie.BatchTrie {
+	return acc.variables
 }
 
 // VarsHash return account's variables hash
@@ -233,6 +263,40 @@ func NewAccountState(root byteutils.Hash, storage storage.Storage) (AccountState
 		batching:     false,
 		storage:      storage,
 	}, nil
+}
+
+func (as *accountState) DirtyAccounts() map[byteutils.HexHash]Account {
+	return as.dirtyAccount
+}
+
+func (as *accountState) RelatedTo(s AccountState) bool {
+	accounts := s.DirtyAccounts()
+	for k := range accounts {
+		if _, ok := as.dirtyAccount[k]; ok {
+			return true
+		}
+	}
+	return false
+}
+
+func (as *accountState) MergeWith(s AccountState) (AccountState, error) {
+	newAs, err := as.Clone()
+	if err != nil {
+		return nil, err
+	}
+	accounts := s.DirtyAccounts()
+	for k, v := range accounts {
+		if acc, ok := as.dirtyAccount[k]; ok {
+			newAcc, err := acc.MergeWith(v)
+			if err != nil {
+				return nil, err
+			}
+			newAs.(*accountState).dirtyAccount[k] = newAcc
+		} else {
+			newAs.(*accountState).dirtyAccount[k] = v
+		}
+	}
+	return newAs, nil
 }
 
 func (as *accountState) recordDirtyAccount(addr byteutils.Hash, acc Account) {
@@ -371,9 +435,6 @@ func (as *accountState) Commit() error {
 	as.dirtyAccount = make(map[byteutils.HexHash]Account)
 	as.stateTrie.Commit()
 	as.batching = false
-	/* 	logging.VLog().WithFields(logrus.Fields{
-		"AccountState": as,
-	}).Debug("AccountState Commit.") */
 	return nil
 }
 
@@ -385,9 +446,6 @@ func (as *accountState) RollBack() {
 	}
 	as.dirtyAccount = make(map[byteutils.HexHash]Account)
 	as.batching = false
-	/* 	logging.VLog().WithFields(logrus.Fields{
-		"AccountState": as,
-	}).Debug("AccountState RollBack.") */
 }
 
 // Clone an accountState
