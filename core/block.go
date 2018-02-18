@@ -609,7 +609,7 @@ func (block *Block) CollectTransactions(deadline int64) {
 	pool := block.txPool
 
 	collected := make(map[string]*Transaction)
-	status := make(map[string]txStatus)
+	status := make(map[string]txStatus) // FIXME: @roy map is not thread safe.
 
 	var mergeLock sync.RWMutex
 	block.begin()
