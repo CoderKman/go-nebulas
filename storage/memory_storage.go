@@ -32,7 +32,7 @@ type MemoryStorage struct {
 // kv entry
 type kv struct{ k, v []byte }
 
-// MemoryBatch
+// MemoryBatch do batch task in memory storage
 type MemoryBatch struct {
 	db      *MemoryStorage
 	entries []*kv
@@ -65,26 +65,15 @@ func (db *MemoryStorage) Del(key []byte) error {
 	return nil
 }
 
-// NewBatch
-func (db *MemoryStorage) NewBatch() Batch {
-	return &MemoryBatch{db: db}
+// EnableBatch enable batch write.
+func (db *MemoryStorage) EnableBatch() {
 }
 
-// Put batch put key-value entry to batch
-func (b *MemoryBatch) Put(key, value []byte) error {
-	entry := &kv{key, value}
-	b.entries = append(b.entries, entry)
+// Flush write and flush pending batch write.
+func (db *MemoryStorage) Flush() error {
 	return nil
 }
 
-func (b *MemoryBatch) Write() error {
-
-	for _, kv := range b.entries {
-		b.db.Put(kv.k, kv.v)
-	}
-	return nil
-}
-
-func (b *MemoryBatch) Reset() {
-	b.entries = b.entries[:0]
+// DisableBatch disable batch write.
+func (db *MemoryStorage) DisableBatch() {
 }
