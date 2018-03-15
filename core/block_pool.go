@@ -420,10 +420,6 @@ func (pool *BlockPool) push(sender string, block *Block) error {
 			"block": plb.block,
 		}).Warn("Found unlinked ancestor.")
 
-		if sender == NoSender {
-			return ErrMissingParentBlock
-		}
-
 		if err := pool.download(sender, plb.block); err != nil {
 			return err
 		}
