@@ -815,9 +815,25 @@ func (block *Block) verifyState() error {
 
 	// verify transaction root.
 	if !byteutils.Equal(block.dposContext.RootHash(), block.DposContextHash()) {
+		expected := block.header.dposContext
+		actual := block.dposContext
 		logging.VLog().WithFields(logrus.Fields{
-			"expect": block.DposContextHash(),
-			"actual": block.dposContext.RootHash(),
+			"expect": []string{
+				byteutils.Hex(expected.DynastyRoot),
+				byteutils.Hex(expected.NextDynastyRoot),
+				byteutils.Hex(expected.CandidateRoot),
+				byteutils.Hex(expected.DelegateRoot),
+				byteutils.Hex(expected.MintCntRoot),
+				byteutils.Hex(expected.VoteRoot),
+			},
+			"actual": []string{
+				byteutils.Hex(actual.delegateTrie.RootHash()),
+				byteutils.Hex(actual.nextDynastyTrie.RootHash()),
+				byteutils.Hex(actual.candidateTrie.RootHash()),
+				byteutils.Hex(actual.delegateTrie.RootHash()),
+				byteutils.Hex(actual.mintCntTrie.RootHash()),
+				byteutils.Hex(actual.voteTrie.RootHash()),
+			},
 		}).Debug("Failed to verify dpos context.")
 		return ErrInvalidBlockDposContextRoot
 	}
