@@ -109,6 +109,9 @@ func (storage *RocksStorage) Flush() error {
 	storage.mutex.Lock()
 	defer storage.mutex.Unlock()
 
+	if !storage.enableBatch {
+		return nil
+	}
 	wb := gorocksdb.NewWriteBatch()
 	defer wb.Clear()
 	for _, opt := range storage.batchOpts {
@@ -118,12 +121,16 @@ func (storage *RocksStorage) Flush() error {
 			wb.Put(opt.key, opt.value)
 		}
 	}
+	storage.batchOpts = make(map[string]*batchOpt)
 
 	return storage.db.Write(storage.wo, wb)
 }
 
 // DisableBatch disable batch write.
 func (storage *RocksStorage) DisableBatch() {
-	storage.Flush()
+	storage.mutex.Lock()
+	defer storage.mutex.Unlock()
+
+	storage.batchOpts = make(map[string]*batchOpt)
 	storage.enableBatch = false
 }

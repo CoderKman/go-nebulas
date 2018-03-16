@@ -133,6 +133,10 @@ func (storage *DiskStorage) Flush() error {
 	storage.mutex.Lock()
 	defer storage.mutex.Unlock()
 
+	if !storage.enableBatch {
+		return nil
+	}
+
 	batch := new(leveldb.Batch)
 	for _, opt := range storage.batchOpts {
 		if opt.deleted {
@@ -148,6 +152,9 @@ func (storage *DiskStorage) Flush() error {
 
 // DisableBatch disable batch write.
 func (storage *DiskStorage) DisableBatch() {
-	storage.Flush()
+	storage.mutex.Lock()
+	defer storage.mutex.Unlock()
+
+	storage.batchOpts = make(map[string]*batchOpt)
 	storage.enableBatch = false
 }
