@@ -119,6 +119,8 @@ func (storage *RocksStorage) Flush() error {
 		}
 	}
 
+	storage.batchOpts = make(map[string]*batchOpt)
+
 	return storage.db.Write(storage.wo, wb)
 }
 
